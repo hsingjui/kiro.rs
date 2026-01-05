@@ -67,6 +67,7 @@ impl Database {
                 next_reset_at REAL,
                 balance_updated_at TEXT,
                 machine_id TEXT,
+                email TEXT,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP
             );
@@ -75,6 +76,27 @@ impl Database {
             CREATE INDEX IF NOT EXISTS idx_credentials_disabled ON credentials(disabled);
             "#,
         )?;
+
+        // 迁移：为已存在的数据库添加 email 列
+        self.migrate_add_email_column(&conn)?;
+
+        Ok(())
+    }
+
+    /// 迁移：添加 email 列（如果不存在）
+    fn migrate_add_email_column(&self, conn: &rusqlite::Connection) -> Result<()> {
+        // 检查 email 列是否已存在
+        let has_column = conn.query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('credentials') WHERE name = 'email'",
+            [],
+            |row| row.get::<_, i64>(0),
+        )? > 0;
+
+        if !has_column {
+            tracing::info!("正在迁移数据库：添加 email 列");
+            conn.execute("ALTER TABLE credentials ADD COLUMN email TEXT", [])?;
+            tracing::info!("数据库迁移完成：email 列已添加");
+        }
 
         Ok(())
     }
@@ -88,7 +110,7 @@ impl Database {
                    client_id, client_secret, profile_arn, priority,
                    disabled, failure_count,
                    subscription_title, current_usage, usage_limit, next_reset_at, balance_updated_at,
-                   machine_id
+                   machine_id, email
             FROM credentials
             ORDER BY priority ASC
             "#,
@@ -113,6 +135,7 @@ impl Database {
                 next_reset_at: row.get(14)?,
                 balance_updated_at: row.get(15)?,
                 machine_id: row.get(16)?,
+                email: row.get(17)?,
             })
         })?;
 
@@ -132,8 +155,8 @@ impl Database {
                                      client_id, client_secret, profile_arn, priority,
                                      disabled, failure_count,
                                      subscription_title, current_usage, usage_limit, next_reset_at, balance_updated_at,
-                                     machine_id)
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)
+                                     machine_id, email)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)
             "#,
             params![
                 cred.refresh_token,
@@ -152,6 +175,7 @@ impl Database {
                 cred.next_reset_at,
                 cred.balance_updated_at,
                 cred.machine_id,
+                cred.email,
             ],
         )?;
         Ok(conn.last_insert_rowid() as u64)
@@ -168,9 +192,9 @@ impl Database {
                 client_id = ?5, client_secret = ?6, profile_arn = ?7, priority = ?8,
                 disabled = ?9, failure_count = ?10,
                 subscription_title = ?11, current_usage = ?12, usage_limit = ?13,
-                next_reset_at = ?14, balance_updated_at = ?15, machine_id = ?16,
+                next_reset_at = ?14, balance_updated_at = ?15, machine_id = ?16, email = ?17,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?17
+            WHERE id = ?18
             "#,
             params![
                 cred.refresh_token,
@@ -189,6 +213,7 @@ impl Database {
                 cred.next_reset_at,
                 cred.balance_updated_at,
                 cred.machine_id,
+                cred.email,
                 id as i64,
             ],
         )?;
@@ -211,7 +236,7 @@ impl Database {
                    client_id, client_secret, profile_arn, priority,
                    disabled, failure_count,
                    subscription_title, current_usage, usage_limit, next_reset_at, balance_updated_at,
-                   machine_id
+                   machine_id, email
             FROM credentials
             WHERE id = ?1
             "#,
@@ -236,6 +261,7 @@ impl Database {
                 next_reset_at: row.get(14)?,
                 balance_updated_at: row.get(15)?,
                 machine_id: row.get(16)?,
+                email: row.get(17)?,
             })
         });
 
@@ -399,7 +425,7 @@ impl Database {
                    client_id, client_secret, profile_arn, priority,
                    disabled, failure_count,
                    subscription_title, current_usage, usage_limit, next_reset_at, balance_updated_at,
-                   machine_id
+                   machine_id, email
             FROM credentials
             WHERE disabled = 0
             ORDER BY priority ASC
@@ -426,6 +452,7 @@ impl Database {
                 next_reset_at: row.get(14)?,
                 balance_updated_at: row.get(15)?,
                 machine_id: row.get(16)?,
+                email: row.get(17)?,
             })
         });
 
@@ -445,7 +472,7 @@ impl Database {
                    client_id, client_secret, profile_arn, priority,
                    disabled, failure_count,
                    subscription_title, current_usage, usage_limit, next_reset_at, balance_updated_at,
-                   machine_id
+                   machine_id, email
             FROM credentials
             WHERE disabled = 0 AND id != ?1
             ORDER BY priority ASC
@@ -472,6 +499,7 @@ impl Database {
                 next_reset_at: row.get(14)?,
                 balance_updated_at: row.get(15)?,
                 machine_id: row.get(16)?,
+                email: row.get(17)?,
             })
         });
 
@@ -504,6 +532,20 @@ impl Database {
             WHERE id = ?2
             "#,
             params![machine_id, id as i64],
+        )?;
+        Ok(affected > 0)
+    }
+
+    /// 更新凭据的邮箱
+    pub fn update_email(&self, id: u64, email: Option<&str>) -> Result<bool> {
+        let conn = self.conn.lock();
+        let affected = conn.execute(
+            r#"
+            UPDATE credentials
+            SET email = ?1, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?2
+            "#,
+            params![email, id as i64],
         )?;
         Ok(affected > 0)
     }
@@ -559,6 +601,7 @@ mod tests {
             usage_limit: 0.0,
             next_reset_at: None,
             balance_updated_at: None,
+            email: None,
         };
 
         let id = db.insert_credential(&cred).unwrap();

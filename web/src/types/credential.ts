@@ -18,6 +18,7 @@ export interface Credential {
   usagePercentage: number
   nextResetAt: number | null
   machineId: string | null
+  email: string | null
 }
 
 /** 账号列表响应 */

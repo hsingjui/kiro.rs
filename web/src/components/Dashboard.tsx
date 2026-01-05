@@ -314,7 +314,7 @@ export function Dashboard() {
             <table className="w-full">
               <thead>
                 <tr className="table-header">
-                  <th className="text-left px-4 md:px-6 py-4 whitespace-nowrap">ID</th>
+                  <th className="text-left px-4 md:px-6 py-4 whitespace-nowrap">邮箱</th>
                   <th className="text-left px-4 md:px-6 py-4 whitespace-nowrap">优先级</th>
                   <th className="text-left px-4 md:px-6 py-4 whitespace-nowrap">状态</th>
                   <th className="text-left px-4 md:px-6 py-4 hidden md:table-cell whitespace-nowrap">额度</th>
@@ -343,7 +343,7 @@ export function Dashboard() {
                     <tr key={credential.id} className="table-row-hover group">
                       <td className="table-cell px-4 md:px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
-                          <span className="font-mono font-medium text-sm">#{credential.id}</span>
+                          <span className="font-mono text-sm text-foreground">{credential.email || '-'}</span>
                         </div>
                       </td>
                       <td className="table-cell px-4 md:px-6 py-4 whitespace-nowrap">
@@ -456,7 +456,7 @@ export function Dashboard() {
           setDeletingCredential(null)
         }}
         onConfirm={handleConfirmDelete}
-        accountEmail={`账号 #${deletingCredential?.id ?? ''}`}
+        accountEmail={deletingCredential?.email ?? `账号 #${deletingCredential?.id ?? ''}`}
       />
 
       <PasswordSettingModal

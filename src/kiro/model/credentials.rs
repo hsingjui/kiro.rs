@@ -78,6 +78,10 @@ pub struct KiroCredentials {
     /// 余额更新时间（RFC3339 格式）
     #[serde(skip)]
     pub balance_updated_at: Option<String>,
+
+    /// 账号邮箱（不序列化到 JSON 配置文件）
+    #[serde(skip)]
+    pub email: Option<String>,
 }
 
 /// 判断是否为零（用于跳过序列化）

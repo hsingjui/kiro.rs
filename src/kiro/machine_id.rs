@@ -85,7 +85,7 @@ fn is_valid_profile_arn(profile_arn: &str) -> bool {
 }
 
 /// 从种子生成确定性的 UUID v4
-fn generate_uuid_from_seed(seed: &str) -> String {
+pub fn generate_uuid_from_seed(seed: &str) -> String {
     // 使用 SHA256 哈希种子，然后转换为 UUID v4 格式
     let mut hasher = Sha256::new();
     hasher.update(seed.as_bytes());

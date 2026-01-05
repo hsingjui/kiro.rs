@@ -1,6 +1,6 @@
 [package]
 name = "kiro-rs"
-version = "2025.12.7"
+version = "2026.1.5"
 edition = "2024"
 
 [profile.release]
@@ -23,16 +23,16 @@ uuid = { version = "1.10", features = ["v1", "v4", "fast-rng"] }
 fastrand = "2"
 sha2 = "0.10"
 hex = "0.4"
-crc = "3"           # CRC32C 计算
-bytes = "1"         # 高效的字节缓冲区
+crc = "3"                                                              # CRC32C 计算
+bytes = "1"                                                            # 高效的字节缓冲区
 tower-http = { version = "0.6", features = ["cors"] }
 clap = { version = "4.5", features = ["derive"] }
 urlencoding = "2"
-parking_lot = "0.12"  # 高性能同步原语
-subtle = "2.6"        # 常量时间比较（防止时序攻击）
-rusqlite = { version = "0.32", features = ["bundled"] }  # SQLite 数据库
-rust-embed = "8"       # 编译时嵌入静态文件
-mime_guess = "2"       # MIME 类型猜测
+parking_lot = "0.12"                                                   # 高性能同步原语
+subtle = "2.6"                                                         # 常量时间比较（防止时序攻击）
+rusqlite = { version = "0.32", features = ["bundled"] }                # SQLite 数据库
+rust-embed = "8"                                                       # 编译时嵌入静态文件
+mime_guess = "2"                                                       # MIME 类型猜测
 
 [dev-dependencies]
-tempfile = "3"  # 测试用临时文件
+tempfile = "3" # 测试用临时文件

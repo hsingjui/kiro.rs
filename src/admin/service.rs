@@ -115,6 +115,7 @@ impl AdminService {
                     remaining,
                     usage_percentage,
                     next_reset_at: usage.as_ref().and_then(|u| u.next_date_reset),
+                    email: entry.email,
                 }
             })
             .collect();
@@ -217,7 +218,7 @@ impl AdminService {
 
     /// 添加新凭据
     ///
-    /// 添加后会尝试获取一次余额信息并存储到数据库
+    /// 先获取 token 和余额，然后一次性写入数据库
     pub async fn add_credential(
         &self,
         refresh_token: String,
@@ -232,7 +233,7 @@ impl AdminService {
             && !crate::kiro::machine_id::is_valid_machine_id(mid)
         {
             return Err(AdminServiceError::InvalidRequest(
-                "machineId 必须是有效的 UUID v4 格式（36 字符）".to_string(),
+                "machineId 必须是有效的 UUID v4 格式".to_string(),
             ));
         }
 
@@ -247,17 +248,29 @@ impl AdminService {
             return Err(AdminServiceError::InvalidRequest("账号已存在".to_string()));
         }
 
-        let cred = KiroCredentials {
+        // auth_method 默认为 "idc"
+        let auth_method = auth_method.unwrap_or_else(|| "idc".to_string());
+
+        // machine_id 默认为从 refreshToken 生成的 UUID
+        let machine_id = machine_id.or_else(|| {
+            Some(crate::kiro::machine_id::generate_uuid_from_seed(&format!(
+                "KotlinNativeAPI/{}",
+                refresh_token
+            )))
+        });
+
+        // 构建临时凭据用于获取 token
+        let temp_cred = KiroCredentials {
             id: None,
             access_token: None,
-            refresh_token: Some(refresh_token),
+            refresh_token: Some(refresh_token.clone()),
             profile_arn: None,
             expires_at: None,
-            auth_method,
-            client_id,
-            client_secret,
-            machine_id,
-            priority: priority.unwrap_or(0),
+            auth_method: Some(auth_method.clone()),
+            client_id: client_id.clone(),
+            client_secret: client_secret.clone(),
+            machine_id: machine_id.clone(),
+            priority: 0,
             disabled: false,
             failure_count: 0,
             subscription_title: None,
@@ -265,6 +278,55 @@ impl AdminService {
             usage_limit: 0.0,
             next_reset_at: None,
             balance_updated_at: None,
+            email: None,
+        };
+
+        // 刷新 token
+        let refreshed = crate::kiro::token_manager::refresh_token(
+            &temp_cred,
+            self.token_manager.config(),
+            self.token_manager.proxy().as_ref(),
+        )
+        .await
+        .map_err(|e| AdminServiceError::UpstreamError(format!("刷新 Token 失败: {}", e)))?;
+
+        let token = refreshed
+            .access_token
+            .as_ref()
+            .ok_or_else(|| AdminServiceError::InternalError("刷新后无 access_token".to_string()))?;
+
+        // 获取余额和邮箱
+        let usage = crate::kiro::token_manager::get_usage_limits(
+            &refreshed,
+            self.token_manager.config(),
+            token,
+            self.token_manager.proxy().as_ref(),
+        )
+        .await
+        .map_err(|e| AdminServiceError::UpstreamError(format!("获取余额失败: {}", e)))?;
+
+        let now = chrono::Utc::now().to_rfc3339();
+
+        // 构建完整凭据信息一次性写入
+        let cred = KiroCredentials {
+            id: None,
+            access_token: refreshed.access_token,
+            refresh_token: Some(refreshed.refresh_token.unwrap_or(refresh_token)),
+            profile_arn: refreshed.profile_arn,
+            expires_at: refreshed.expires_at,
+            auth_method: Some(auth_method),
+            client_id,
+            client_secret,
+            machine_id,
+            priority: priority.unwrap_or(0),
+            disabled: false,
+            failure_count: 0,
+            subscription_title: usage.subscription_title().map(|s| s.to_string()),
+            current_usage: usage.current_usage(),
+            usage_limit: usage.usage_limit(),
+            next_reset_at: usage.next_date_reset,
+            balance_updated_at: Some(now),
+            email: usage.email().map(|s| s.to_string()),
         };
 
         let id = self
@@ -272,26 +334,7 @@ impl AdminService {
             .add_credential(cred)
             .map_err(|e| AdminServiceError::InternalError(e.to_string()))?;
 
-        // 尝试获取一次余额信息（失败不影响添加结果）
-        match self.token_manager.get_usage_limits_for(id).await {
-            Ok(usage) => {
-                if let Err(e) = self.token_manager.database().update_balance(
-                    id,
-                    usage.subscription_title(),
-                    usage.current_usage(),
-                    usage.usage_limit(),
-                    usage.next_date_reset,
-                ) {
-                    tracing::warn!("初始化余额到数据库失败: {}", e);
-                } else {
-                    tracing::info!("凭据 #{} 初始余额已获取并保存", id);
-                }
-            }
-            Err(e) => {
-                tracing::warn!("获取凭据 #{} 初始余额失败（不影响添加结果）: {}", id, e);
-            }
-        }
-
+        tracing::info!("凭据 #{} 已添加并获取余额", id);
         Ok(id)
     }
 

@@ -127,7 +127,7 @@ pub(crate) fn validate_refresh_token(credentials: &KiroCredentials) -> anyhow::R
 }
 
 /// 刷新 Token
-pub(crate) async fn refresh_token(
+pub async fn refresh_token(
     credentials: &KiroCredentials,
     config: &Config,
     proxy: Option<&ProxyConfig>,
@@ -295,7 +295,7 @@ async fn refresh_idc_token(
 const USAGE_LIMITS_AMZ_USER_AGENT_PREFIX: &str = "aws-sdk-js/1.0.0";
 
 /// 获取使用额度信息
-pub(crate) async fn get_usage_limits(
+pub async fn get_usage_limits(
     credentials: &KiroCredentials,
     config: &Config,
     token: &str,
@@ -311,7 +311,7 @@ pub(crate) async fn get_usage_limits(
 
     // 构建 URL
     let mut url = format!(
-        "https://{}/getUsageLimits?origin=AI_EDITOR&resourceType=AGENTIC_REQUEST",
+        "https://{}/getUsageLimits?isEmailRequired=true&origin=AI_EDITOR&resourceType=AGENTIC_REQUEST",
         host
     );
 
@@ -390,6 +390,8 @@ pub struct CredentialEntrySnapshot {
     pub expires_at: Option<String>,
     /// 设备指纹（UUID v4 格式）
     pub machine_id: Option<String>,
+    /// 账号邮箱
+    pub email: Option<String>,
 }
 
 /// 凭据管理器状态快照
@@ -481,6 +483,11 @@ impl MultiTokenManager {
     /// 获取配置的引用
     pub fn config(&self) -> &Config {
         &self.config
+    }
+
+    /// 获取代理配置
+    pub fn proxy(&self) -> &Option<ProxyConfig> {
+        &self.proxy
     }
 
     /// 获取当前活动凭据的克隆
@@ -791,6 +798,7 @@ impl MultiTokenManager {
                     has_profile_arn: c.profile_arn.is_some(),
                     expires_at: c.expires_at.clone(),
                     machine_id: c.machine_id.clone(),
+                    email: c.email.clone(),
                 })
                 .collect(),
             current_id,
@@ -911,7 +919,19 @@ impl MultiTokenManager {
             (token, credentials)
         };
 
-        get_usage_limits(&final_creds, &self.config, &token, self.proxy.as_ref()).await
+        let response =
+            get_usage_limits(&final_creds, &self.config, &token, self.proxy.as_ref()).await?;
+
+        // 如果 API 返回了邮箱，更新到数据库
+        if let Some(email) = response.email() {
+            if let Err(e) = self.db.update_email(id, Some(email)) {
+                tracing::warn!("更新凭据 #{} 邮箱失败: {}", id, e);
+            } else {
+                tracing::debug!("已更新凭据 #{} 邮箱: {}", id, email);
+            }
+        }
+
+        Ok(response)
     }
 }
 

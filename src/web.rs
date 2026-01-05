@@ -45,16 +45,14 @@ fn serve_file(path: &str) -> Response {
         }
         None => {
             // 对于 SPA，非静态资源路径返回 index.html
-            if !path.contains('.') {
-                if let Some(index) = Assets::get("index.html") {
-                    let mime = "text/html; charset=utf-8";
-                    return Response::builder()
-                        .status(StatusCode::OK)
-                        .header(header::CONTENT_TYPE, mime)
-                        .header(header::CACHE_CONTROL, "no-cache") // index.html 不缓存
-                        .body(Body::from(index.data.into_owned()))
-                        .unwrap();
-                }
+            if !path.contains('.') && let Some(index) = Assets::get("index.html") {
+                let mime = "text/html; charset=utf-8";
+                return Response::builder()
+                    .status(StatusCode::OK)
+                    .header(header::CONTENT_TYPE, mime)
+                    .header(header::CACHE_CONTROL, "no-cache") // index.html 不缓存
+                    .body(Body::from(index.data.into_owned()))
+                    .unwrap();
             }
 
             Response::builder()

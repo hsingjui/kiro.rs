@@ -52,6 +52,8 @@ pub struct CredentialStatusItem {
     pub usage_percentage: f64,
     /// 下次重置时间（Unix 时间戳）
     pub next_reset_at: Option<f64>,
+    /// 账号邮箱
+    pub email: Option<String>,
 }
 
 // ============ 操作请求 ============
