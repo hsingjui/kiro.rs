@@ -5,15 +5,16 @@ mod http_client;
 mod kiro;
 mod model;
 pub mod token;
+mod web;
 
 use std::sync::Arc;
 
 use clap::Parser;
-use kiro::model::credentials::{CredentialsConfig, KiroCredentials};
+use kiro::db::Database;
 use kiro::provider::KiroProvider;
 use kiro::token_manager::MultiTokenManager;
-use model::config::Config;
 use model::arg::Args;
+use model::config::Config;
 
 #[tokio::main]
 async fn main() {
@@ -29,29 +30,20 @@ async fn main() {
         .init();
 
     // 加载配置
-    let config_path = args.config.unwrap_or_else(|| Config::default_config_path().to_string());
+    let config_path = args
+        .config
+        .unwrap_or_else(|| Config::default_config_path().to_string());
     let config = Config::load(&config_path).unwrap_or_else(|e| {
         tracing::error!("加载配置失败: {}", e);
         std::process::exit(1);
     });
 
-    // 加载凭证（支持单对象或数组格式）
-    let credentials_path = args.credentials.unwrap_or_else(|| KiroCredentials::default_credentials_path().to_string());
-    let credentials_config = CredentialsConfig::load(&credentials_path).unwrap_or_else(|e| {
-        tracing::error!("加载凭证失败: {}", e);
+    // 打开 SQLite 数据库
+    let db = Database::open(&config.database_path).unwrap_or_else(|e| {
+        tracing::error!("打开数据库失败: {}", e);
         std::process::exit(1);
     });
-
-    // 判断是否为多凭据格式（用于刷新后回写）
-    let is_multiple_format = credentials_config.is_multiple();
-
-    // 转换为按优先级排序的凭据列表
-    let credentials_list = credentials_config.into_sorted_credentials();
-    tracing::info!("已加载 {} 个凭据配置", credentials_list.len());
-
-    // 获取第一个凭据用于日志显示
-    let first_credentials = credentials_list.first().cloned().unwrap_or_default();
-    tracing::debug!("主凭证: {:?}", first_credentials);
+    tracing::info!("数据库已打开: {}", config.database_path);
 
     // 获取 API Key
     let api_key = config.api_key.clone().unwrap_or_else(|| {
@@ -73,17 +65,22 @@ async fn main() {
     }
 
     // 创建 MultiTokenManager 和 KiroProvider
-    let token_manager = MultiTokenManager::new(
-        config.clone(),
-        credentials_list,
-        proxy_config.clone(),
-        Some(credentials_path.into()),
-        is_multiple_format,
-    )
-    .unwrap_or_else(|e| {
-        tracing::error!("创建 Token 管理器失败: {}", e);
-        std::process::exit(1);
-    });
+    let token_manager = MultiTokenManager::new(config.clone(), db.clone(), proxy_config.clone())
+        .unwrap_or_else(|e| {
+            tracing::error!("创建 Token 管理器失败: {}", e);
+            std::process::exit(1);
+        });
+
+    let credentials_count = token_manager.total_count();
+    if credentials_count == 0 {
+        tracing::warn!("数据库中没有凭据，请通过 Admin API 添加凭据后使用");
+    } else {
+        tracing::info!("已加载 {} 个凭据", credentials_count);
+    }
+
+    // 获取第一个凭据用于日志显示
+    let first_credentials = token_manager.credentials();
+
     let token_manager = Arc::new(token_manager);
     let kiro_provider = KiroProvider::with_proxy(token_manager.clone(), proxy_config.clone());
 
@@ -126,6 +123,10 @@ async fn main() {
         anthropic_app
     };
 
+    // 添加前端静态文件服务（作为 fallback，避免覆盖 API 路由）
+    let web_router = web::create_web_router();
+    let app = app.fallback_service(web_router);
+
     // 启动服务器
     let addr = format!("{}:{}", config.host, config.port);
     tracing::info!("启动 Anthropic API 端点: {}", addr);
@@ -137,11 +138,14 @@ async fn main() {
     if admin_key_valid {
         tracing::info!("Admin API:");
         tracing::info!("  GET  /api/admin/credentials");
-        tracing::info!("  POST /api/admin/credentials/:index/disabled");
-        tracing::info!("  POST /api/admin/credentials/:index/priority");
-        tracing::info!("  POST /api/admin/credentials/:index/reset");
-        tracing::info!("  GET  /api/admin/credentials/:index/balance");
+        tracing::info!("  POST /api/admin/credentials/:id/disabled");
+        tracing::info!("  POST /api/admin/credentials/:id/priority");
+        tracing::info!("  POST /api/admin/credentials/:id/reset");
+        tracing::info!("  GET  /api/admin/credentials/:id/balance");
+        tracing::info!("  POST /api/admin/credentials");
+        tracing::info!("  DELETE /api/admin/credentials/:id");
     }
+    tracing::info!("Web UI: http://{}", addr);
 
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();

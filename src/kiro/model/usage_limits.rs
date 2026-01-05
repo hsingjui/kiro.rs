@@ -18,7 +18,7 @@ pub struct UsageLimitsResponse {
 
     /// 使用量明细列表
     #[serde(default)]
-    pub usage_breakdown_list: Vec<UsageBreakdown>
+    pub usage_breakdown_list: Vec<UsageBreakdown>,
 }
 
 /// 订阅信息
@@ -27,12 +27,13 @@ pub struct UsageLimitsResponse {
 pub struct SubscriptionInfo {
     /// 订阅标题 (KIRO PRO+ / KIRO FREE 等)
     #[serde(default)]
-    pub subscription_title: Option<String>
+    pub subscription_title: Option<String>,
 }
 
 /// 使用量明细
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct UsageBreakdown {
     /// 当前使用量
     #[serde(default)]
@@ -61,6 +62,7 @@ pub struct UsageBreakdown {
 /// 免费试用信息
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct FreeTrialInfo {
     /// 当前使用量
     #[serde(default)]
@@ -123,10 +125,10 @@ impl UsageLimitsResponse {
         let base_limit = breakdown.usage_limit_with_precision;
 
         // 如果 free trial 处于激活状态，合并额度
-        if let Some(trial) = &breakdown.free_trial_info {
-            if trial.is_active() {
-                return base_limit + trial.usage_limit_with_precision;
-            }
+        if let Some(trial) = &breakdown.free_trial_info
+            && trial.is_active()
+        {
+            return base_limit + trial.usage_limit_with_precision;
         }
 
         base_limit
@@ -143,10 +145,10 @@ impl UsageLimitsResponse {
         let base_usage = breakdown.current_usage_with_precision;
 
         // 如果 free trial 处于激活状态，合并使用量
-        if let Some(trial) = &breakdown.free_trial_info {
-            if trial.is_active() {
-                return base_usage + trial.current_usage_with_precision;
-            }
+        if let Some(trial) = &breakdown.free_trial_info
+            && trial.is_active()
+        {
+            return base_usage + trial.current_usage_with_precision;
         }
 
         base_usage

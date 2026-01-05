@@ -1,20 +1,23 @@
 //! Admin API HTTP 处理器
 
 use axum::{
+    Json,
     extract::{Path, State},
     response::IntoResponse,
-    Json,
 };
 
 use super::{
     middleware::AdminState,
-    types::{SetDisabledRequest, SetPriorityRequest, SuccessResponse},
+    types::{
+        AddCredentialRequest, AddCredentialResponse, AdminErrorResponse, BalanceResponse,
+        SetDisabledRequest, SetPriorityRequest, SuccessResponse,
+    },
 };
 
 /// GET /api/admin/credentials
-/// 获取所有凭据状态
+/// 获取所有凭据状态（包含余额信息）
 pub async fn get_all_credentials(State(state): State<AdminState>) -> impl IntoResponse {
-    let response = state.service.get_all_credentials();
+    let response = state.service.get_all_credentials().await;
     Json(response)
 }
 
@@ -74,7 +77,51 @@ pub async fn get_credential_balance(
     Path(id): Path<u64>,
 ) -> impl IntoResponse {
     match state.service.get_balance(id).await {
-        Ok(response) => Json(response).into_response(),
+        Ok(response) => Json::<BalanceResponse>(response).into_response(),
+        Err(e) => (
+            e.status_code(),
+            Json::<AdminErrorResponse>(e.into_response()),
+        )
+            .into_response(),
+    }
+}
+
+/// POST /api/admin/credentials
+/// 添加新凭据
+pub async fn add_credential(
+    State(state): State<AdminState>,
+    Json(payload): Json<AddCredentialRequest>,
+) -> impl IntoResponse {
+    match state
+        .service
+        .add_credential(
+            payload.refresh_token,
+            payload.auth_method,
+            payload.client_id,
+            payload.client_secret,
+            payload.machine_id,
+            payload.priority,
+        )
+        .await
+    {
+        Ok(id) => Json(AddCredentialResponse {
+            success: true,
+            message: format!("凭据已添加，ID: {}", id),
+            id,
+        })
+        .into_response(),
+        Err(e) => (e.status_code(), Json(e.into_response())).into_response(),
+    }
+}
+
+/// DELETE /api/admin/credentials/:id
+/// 删除凭据
+pub async fn delete_credential(
+    State(state): State<AdminState>,
+    Path(id): Path<u64>,
+) -> impl IntoResponse {
+    match state.service.delete_credential(id) {
+        Ok(_) => Json(SuccessResponse::new(format!("凭据 #{} 已删除", id))).into_response(),
         Err(e) => (e.status_code(), Json(e.into_response())).into_response(),
     }
 }

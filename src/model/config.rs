@@ -19,9 +19,6 @@ pub struct Config {
     pub kiro_version: String,
 
     #[serde(default)]
-    pub machine_id: Option<String>,
-
-    #[serde(default)]
     pub api_key: Option<String>,
 
     #[serde(default = "default_system_version")]
@@ -58,6 +55,10 @@ pub struct Config {
     /// Admin API 密钥（可选，启用 Admin API 功能）
     #[serde(default)]
     pub admin_api_key: Option<String>,
+
+    /// SQLite 数据库路径（用于存储凭据）
+    #[serde(default = "default_database_path")]
+    pub database_path: String,
 }
 
 fn default_host() -> String {
@@ -89,6 +90,10 @@ fn default_count_tokens_auth_type() -> String {
     "x-api-key".to_string()
 }
 
+fn default_database_path() -> String {
+    "./kiro.db".to_string()
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -96,7 +101,6 @@ impl Default for Config {
             port: default_port(),
             region: default_region(),
             kiro_version: default_kiro_version(),
-            machine_id: None,
             api_key: None,
             system_version: default_system_version(),
             node_version: default_node_version(),
@@ -107,6 +111,7 @@ impl Default for Config {
             proxy_username: None,
             proxy_password: None,
             admin_api_key: None,
+            database_path: default_database_path(),
         }
     }
 }

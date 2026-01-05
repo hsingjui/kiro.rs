@@ -9,7 +9,8 @@
 - **Token 自动刷新**: 自动管理和刷新 OAuth Token
 - **多凭据支持**: 支持配置多个凭据，按优先级自动故障转移
 - **智能重试**: 单凭据最多重试 3 次，单请求最多重试 9 次
-- **凭据回写**: 多凭据格式下自动回写刷新后的 Token
+- **SQLite 存储**: 凭据存储在 SQLite 数据库中，支持原子操作和事务
+- **Admin API**: 提供凭据管理 API，支持动态添加、删除、查询凭据
 - **Thinking 模式**: 支持 Claude 的 extended thinking 功能
 - **工具调用**: 完整支持 function calling / tool use
 - **多模型支持**: 支持 Sonnet、Opus、Haiku 系列模型
@@ -21,6 +22,18 @@
 | `/v1/models` | GET | 获取可用模型列表    |
 | `/v1/messages` | POST | 创建消息（对话）    |
 | `/v1/messages/count_tokens` | POST | 估算 Token 数量 |
+
+### Admin API 端点
+
+| 端点 | 方法 | 描述          |
+|------|------|-------------|
+| `/api/admin/credentials` | GET | 获取所有凭据状态 |
+| `/api/admin/credentials` | POST | 添加新凭据 |
+| `/api/admin/credentials/:id` | DELETE | 删除凭据 |
+| `/api/admin/credentials/:id/disabled` | POST | 设置凭据禁用状态 |
+| `/api/admin/credentials/:id/priority` | POST | 设置凭据优先级 |
+| `/api/admin/credentials/:id/reset` | POST | 重置失败计数 |
+| `/api/admin/credentials/:id/balance` | GET | 获取凭据余额 |
 
 ## 快速开始
 
@@ -40,8 +53,9 @@ cargo build --release
    "port": 8990,  // 必配, 监听端口
    "apiKey": "sk-kiro-rs-qazWSXedcRFV123456",  // 必配, 请求的鉴权 token
    "region": "us-east-1",  // 必配, 区域, 一般保持默认即可
+   "databasePath": "./kiro.db",  // 可选, SQLite 数据库路径, 默认 ./kiro.db
+   "adminApiKey": "admin-secret-key",  // 可选, Admin API 密钥, 不配置则禁用 Admin API
    "kiroVersion": "0.8.0",  // 可选, 用于自定义请求特征, 不需要请删除: kiro ide 版本
-   "machineId": "如果你需要自定义机器码请将64位机器码填到这里", // 可选, 用于自定义请求特征, 不需要请删除: 机器码
    "systemVersion": "darwin#24.6.0",  // 可选, 用于自定义请求特征, 不需要请删除: 系统版本
    "nodeVersion": "22.21.1",  // 可选, 用于自定义请求特征, 不需要请删除: node 版本
    "countTokensApiUrl": "https://api.example.com/v1/messages/count_tokens", // 可选, 用于自定义token统计API, 不需要请删除
@@ -52,7 +66,7 @@ cargo build --release
    "proxyPassword": "pass"  // 可选, HTTP/SOCK5代理密码, 不需要请删除
 }
 ```
-最小启动配置为: 
+最小启动配置为:
 ```json
 {
    "host": "127.0.0.1",
@@ -61,70 +75,47 @@ cargo build --release
    "region": "us-east-1"
 }
 ```
-### 3. 凭证文件
 
-创建 `credentials.json` 凭证文件（从 Kiro IDE 获取）。支持两种格式：
+### 3. 添加凭据
 
-#### 单凭据格式（旧格式，向后兼容）
+凭据存储在 SQLite 数据库中（默认路径 `./kiro.db`）。首次启动时数据库为空，需要通过 Admin API 添加凭据。
 
-```json
-{
-   "accessToken": "这里是请求token 一般有效期一小时",  // 可选, 不需要请删除, 可以自动刷新
-   "refreshToken": "这里是刷新token 一般有效期7-30天不等",  // 必配, 根据实际填写
-   "profileArn": "这是profileArn, 如果没有请你删除该字段， 配置应该像这个 arn:aws:codewhisperer:us-east-1:111112222233:profile/QWER1QAZSDFGH",  // 可选, 不需要请删除
-   "expiresAt": "这里是请求token过期时间, 一般格式是这样2025-12-31T02:32:45.144Z, 在过期前 kirors 不会请求刷新请求token",  // 必配, 不确定你需要写一个已经过期的UTC时间
-   "authMethod": "这里是认证方式 social/Social 或者是 idc/IdC",  // 必配, 根据你 Token 登录来源决定
-   "clientId": "如果你是 IdC 登录 需要配置这个",  // 可选, 不需要请删除
-   "clientSecret": "如果你是 IdC 登录 需要配置这个"  // 可选, 不需要请删除
-}
-```
+> **注意**: 需要在 `config.json` 中配置 `adminApiKey` 才能使用 Admin API。
 
-#### 多凭据格式（新格式，支持故障转移和自动回写）
+#### 通过 Admin API 添加凭据
 
-```json
-[
-   {
-      "refreshToken": "第一个凭据的刷新token",
-      "expiresAt": "2025-12-31T02:32:45.144Z",
-      "authMethod": "social",
-      "priority": 0
-   },
-   {
-      "refreshToken": "第二个凭据的刷新token",
-      "expiresAt": "2025-12-31T02:32:45.144Z",
-      "authMethod": "idc",
-      "clientId": "xxxxxxxxx",
-      "clientSecret": "xxxxxxxxx",
-      "priority": 1
-   }
-]
+```bash
+# 添加 Social 认证凭据
+curl -X POST http://127.0.0.1:8990/api/admin/credentials \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: your-admin-api-key" \
+  -d '{
+    "refreshToken": "你的刷新token",
+    "authMethod": "social",
+    "priority": 0
+  }'
+
+# 添加 IdC 认证凭据（带自定义机器码）
+curl -X POST http://127.0.0.1:8990/api/admin/credentials \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: your-admin-api-key" \
+  -d '{
+    "refreshToken": "你的刷新token",
+    "authMethod": "idc",
+    "clientId": "xxxxxxxxx",
+    "clientSecret": "xxxxxxxxx",
+    "machineId": "64位十六进制字符串（可选）",
+    "priority": 1
+  }'
 ```
 
 > **多凭据特性说明**：
 > - 按 `priority` 字段排序，数字越小优先级越高（默认为 0）
+> - 每个凭据可以配置独立的 `machineId`（设备指纹），不配置则自动生成
 > - 单凭据最多重试 3 次，单请求最多重试 9 次
 > - 自动故障转移到下一个可用凭据
-> - 多凭据格式下 Token 刷新后自动回写到源文件
+> - Token 刷新后自动持久化到数据库
 
-最小启动配置(social):
-```json
-{
-   "refreshToken": "XXXXXXXXXXXXXXXX",
-   "expiresAt": "2025-12-31T02:32:45.144Z",
-   "authMethod": "social"
-}
-```
-
-最小启动配置(idc):
-```json
-{
-   "refreshToken": "XXXXXXXXXXXXXXXX",
-   "expiresAt": "2025-12-31T02:32:45.144Z",
-   "authMethod": "idc",
-   "clientId": "xxxxxxxxx",
-   "clientSecret": "xxxxxxxxx"
-}
-```
 ### 4. 启动服务
 
 ```bash
@@ -134,7 +125,7 @@ cargo build --release
 或指定配置文件路径：
 
 ```bash
-./target/release/kiro-rs -c /path/to/config.json --credentials /path/to/credentials.json
+./target/release/kiro-rs -c /path/to/config.json
 ```
 
 ### 5. 使用 API
@@ -162,8 +153,9 @@ curl http://127.0.0.1:8990/v1/messages \
 | `port` | number | `8080` | 服务监听端口                  |
 | `apiKey` | string | - | 自定义 API Key（用于客户端认证）    |
 | `region` | string | `us-east-1` | AWS 区域                  |
+| `databasePath` | string | `./kiro.db` | SQLite 数据库路径（存储凭据） |
+| `adminApiKey` | string | - | Admin API 密钥（不配置则禁用 Admin API） |
 | `kiroVersion` | string | `0.8.0` | Kiro 版本号                |
-| `machineId` | string | - | 自定义机器码（64位十六进制）不定义则自动生成 |
 | `systemVersion` | string | 随机 | 系统版本标识                  |
 | `nodeVersion` | string | `22.21.1` | Node.js 版本标识            |
 | `countTokensApiUrl` | string | - | 外部 count_tokens API 地址（可选） |
@@ -173,20 +165,22 @@ curl http://127.0.0.1:8990/v1/messages \
 | `proxyUsername` | string | - | 代理用户名（可选） |
 | `proxyPassword` | string | - | 代理密码（可选） |
 
-### credentials.json
+### 凭据字段说明
 
-支持单对象格式（向后兼容）或数组格式（多凭据）。
+凭据存储在 SQLite 数据库中，通过 Admin API 管理。
 
 | 字段 | 类型 | 描述                      |
 |------|------|-------------------------|
-| `accessToken` | string | OAuth 访问令牌（可选，可自动刷新）    |
-| `refreshToken` | string | OAuth 刷新令牌              |
+| `id` | number | 凭据唯一 ID（数据库自动分配）    |
+| `refreshToken` | string | OAuth 刷新令牌（必填）              |
+| `accessToken` | string | OAuth 访问令牌（可选，自动刷新）    |
 | `profileArn` | string | AWS Profile ARN（可选，登录时返回） |
 | `expiresAt` | string | Token 过期时间 (RFC3339)    |
-| `authMethod` | string | 认证方式（social 或 idc）      |
-| `clientId` | string | IdC 登录的客户端 ID（可选）      |
-| `clientSecret` | string | IdC 登录的客户端密钥（可选）      |
-| `priority` | number | 凭据优先级，数字越小越优先，默认为 0（多凭据格式时有效）|
+| `authMethod` | string | 认证方式（social 或 idc，默认 social）      |
+| `clientId` | string | IdC 登录的客户端 ID（IdC 认证必填）      |
+| `clientSecret` | string | IdC 登录的客户端密钥（IdC 认证必填）      |
+| `machineId` | string | 设备指纹（64位十六进制字符串，可选，不填则自动生成） |
+| `priority` | number | 凭据优先级，数字越小越优先，默认为 0 |
 
 ## 模型映射
 
@@ -213,10 +207,18 @@ kiro-rs/
 │   │   ├── converter.rs        # 协议转换器
 │   │   ├── stream.rs           # 流式响应处理
 │   │   └── token.rs            # Token 估算
+│   ├── admin/                  # Admin API
+│   │   ├── router.rs           # 路由配置
+│   │   ├── handlers.rs         # 请求处理器
+│   │   ├── middleware.rs       # 认证中间件
+│   │   ├── service.rs          # 业务逻辑
+│   │   ├── types.rs            # 类型定义
+│   │   └── error.rs            # 错误处理
 │   └── kiro/                   # Kiro API 客户端
 │       ├── provider.rs         # API 提供者
 │       ├── token_manager.rs    # Token 管理
 │       ├── machine_id.rs       # 设备指纹生成
+│       ├── db.rs               # SQLite 数据库
 │       ├── model/              # 数据模型
 │       │   ├── credentials.rs  # OAuth 凭证
 │       │   ├── events/         # 响应事件类型
@@ -228,10 +230,7 @@ kiro-rs/
 │           ├── header.rs       # 头部解析
 │           └── crc.rs          # CRC 校验
 ├── Cargo.toml                  # 项目配置
-├── config.example.json         # 配置示例
-├── credentials.example.social.json   # Social 凭证示例
-├── credentials.example.idc.json      # IdC 凭证示例
-└── credentials.example.multiple.json # 多凭据示例
+└── config.example.json         # 配置示例
 ```
 
 ## 技术栈
@@ -239,6 +238,7 @@ kiro-rs/
 - **Web 框架**: [Axum](https://github.com/tokio-rs/axum) 0.8
 - **异步运行时**: [Tokio](https://tokio.rs/)
 - **HTTP 客户端**: [Reqwest](https://github.com/seanmonstar/reqwest)
+- **数据库**: [rusqlite](https://github.com/rusqlite/rusqlite) (SQLite)
 - **序列化**: [Serde](https://serde.rs/)
 - **日志**: [tracing](https://github.com/tokio-rs/tracing)
 - **命令行**: [Clap](https://github.com/clap-rs/clap)
@@ -323,9 +323,10 @@ RUST_LOG=debug ./target/release/kiro-rs
 
 ## 注意事项
 
-1. **凭证安全**: 请妥善保管 `credentials.json` 文件，不要提交到版本控制
-2. **Token 刷新**: 服务会自动刷新过期的 Token，无需手动干预
-3. **不支持的工具**: `web_search` 和 `websearch` 工具会被自动过滤
+1. **数据库安全**: 请妥善保管 SQLite 数据库文件（默认 `kiro.db`），其中包含敏感凭据
+2. **Admin API 安全**: 建议为 `adminApiKey` 设置强密码，并限制 Admin API 的访问范围
+3. **Token 刷新**: 服务会自动刷新过期的 Token，无需手动干预
+4. **不支持的工具**: `web_search` 和 `websearch` 工具会被自动过滤
 
 ## License
 

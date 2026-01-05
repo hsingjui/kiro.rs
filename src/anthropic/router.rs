@@ -1,16 +1,15 @@
 //! Anthropic API 路由配置
 
 use axum::{
-    middleware,
+    Router, middleware,
     routing::{get, post},
-    Router,
 };
 
 use crate::kiro::provider::KiroProvider;
 
 use super::{
     handlers::{count_tokens, get_models, post_messages},
-    middleware::{auth_middleware, cors_layer, AppState},
+    middleware::{AppState, auth_middleware, cors_layer},
 };
 
 /// 创建 Anthropic API 路由
@@ -28,7 +27,7 @@ use super::{
 /// # 参数
 /// - `api_key`: API 密钥，用于验证客户端请求
 /// - `kiro_provider`: 可选的 KiroProvider，用于调用上游 API
-
+///
 /// 创建带有 KiroProvider 的 Anthropic API 路由
 pub fn create_router_with_provider(
     api_key: impl Into<String>,

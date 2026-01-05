@@ -38,6 +38,20 @@ pub struct CredentialStatusItem {
     pub auth_method: Option<String>,
     /// 是否有 Profile ARN
     pub has_profile_arn: bool,
+    /// 设备指纹（UUID v4 格式）
+    pub machine_id: Option<String>,
+    /// 订阅类型
+    pub subscription_title: Option<String>,
+    /// 当前使用量
+    pub current_usage: f64,
+    /// 使用限额
+    pub usage_limit: f64,
+    /// 剩余额度
+    pub remaining: f64,
+    /// 使用百分比
+    pub usage_percentage: f64,
+    /// 下次重置时间（Unix 时间戳）
+    pub next_reset_at: Option<f64>,
 }
 
 // ============ 操作请求 ============
@@ -56,6 +70,34 @@ pub struct SetDisabledRequest {
 pub struct SetPriorityRequest {
     /// 新优先级值
     pub priority: u32,
+}
+
+/// 添加凭据请求
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AddCredentialRequest {
+    /// 刷新令牌（必填）
+    pub refresh_token: String,
+    /// 认证方式（可选，默认 "social"）
+    pub auth_method: Option<String>,
+    /// OIDC Client ID（IdC 认证需要）
+    pub client_id: Option<String>,
+    /// OIDC Client Secret（IdC 认证需要）
+    pub client_secret: Option<String>,
+    /// 设备指纹（可选，UUID v4 格式）
+    pub machine_id: Option<String>,
+    /// 优先级（可选，默认 0）
+    pub priority: Option<u32>,
+}
+
+/// 添加凭据响应
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AddCredentialResponse {
+    pub success: bool,
+    pub message: String,
+    /// 新凭据的 ID
+    pub id: u64,
 }
 
 // ============ 余额查询 ============

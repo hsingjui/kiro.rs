@@ -1,0 +1,502 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/forms";
+@import "tw-animate-css";
+
+/* ============================================
+   Kiro Design System
+   Style: Functional Glass
+   ============================================ */
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  /* Core - Slate palette */
+  --color-slate-850: #151e2e;
+
+  --color-slate-850: #151e2e;
+
+  /* Typography */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", ui-monospace, monospace;
+
+  /* Radius - Functional Glass: Soft, rounded */
+  --radius: 0.625rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+
+  /* Semantic Colors */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Glass Surface */
+  --color-surface-glass: var(--surface-glass);
+
+  /* AI Colors */
+  --color-ai-thinking: var(--ai-thinking);
+  --color-ai-success: var(--ai-success);
+  --color-ai-streaming: var(--ai-streaming);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-glass: 0 4px 30px rgba(0, 0, 0, 0.05);
+  --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.15);
+
+  /* Animation */
+  --animate-blob: blob 15s infinite;
+  --animate-fade-in: fadeIn 0.3s ease-out forwards;
+  --animate-slide-up: slideUp 0.4s ease-out forwards;
+}
+
+:root {
+  /* ========================================
+     Light Mode - Functional Glass (Slate)
+     ======================================== */
+
+  /* Core - Slate palette */
+  --background: #f8fafc; /* slate-50 */
+  --foreground: #0f172a; /* slate-900 */
+
+  /* Primary - Blue */
+  --primary: #2563eb; /* blue-600 */
+  --primary-foreground: #ffffff;
+
+  /* Secondary */
+  --secondary: #f1f5f9; /* slate-100 */
+  --secondary-foreground: #0f172a; /* slate-900 */
+
+  /* Muted */
+  --muted: #e2e8f0; /* slate-200 */
+  --muted-foreground: #64748b; /* slate-500 */
+
+  /* Accent */
+  --accent: #2563eb; /* blue-600 */
+  --accent-foreground: #ffffff;
+
+  /* Cards - Solid white */
+  --card: #ffffff;
+  --card-foreground: #0f172a; /* slate-900 */
+
+  /* Glass Surface */
+  --surface-glass: rgba(255, 255, 255, 0.8);
+
+  /* Popover */
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+
+  /* Borders - Subtle slate */
+  --border: #e2e8f0; /* slate-200 */
+  --input: #cbd5e1; /* slate-300 */
+  --ring: #2563eb; /* blue-600 */
+
+  /* Destructive */
+  --destructive: #dc2626; /* red-600 */
+
+  /* AI-specific colors */
+  --ai-thinking: #2563eb;
+  --ai-success: #16a34a;
+  --ai-streaming: #7c3aed;
+}
+
+.dark {
+  /* ========================================
+     Dark Mode - Functional Glass (Slate)
+     ======================================== */
+
+  /* Core - Deep slate */
+  --background: #020617; /* slate-950 */
+  --foreground: #f1f5f9; /* slate-100 */
+
+  /* Primary - Lighter blue for dark mode */
+  --primary: #3b82f6; /* blue-500 */
+  --primary-foreground: #ffffff;
+
+  /* Secondary */
+  --secondary: #1e293b; /* slate-800 */
+  --secondary-foreground: #f1f5f9; /* slate-100 */
+
+  /* Muted */
+  --muted: #334155; /* slate-700 */
+  --muted-foreground: #94a3b8; /* slate-400 */
+
+  /* Accent */
+  --accent: #3b82f6; /* blue-500 */
+  --accent-foreground: #ffffff;
+
+  /* Cards - Solid dark */
+  --card: #0f172a; /* slate-900 */
+  --card-foreground: #f1f5f9; /* slate-100 */
+
+  /* Glass Surface */
+  --surface-glass: rgba(15, 23, 42, 0.8);
+
+  /* Popover */
+  --popover: #0f172a;
+  --popover-foreground: #f1f5f9;
+
+  /* Borders - Subtle dark slate */
+  --border: #1e293b; /* slate-800 */
+  --input: #334155; /* slate-700 */
+  --ring: #3b82f6; /* blue-500 */
+
+  /* Destructive */
+  --destructive: #ef4444; /* red-500 */
+
+  /* AI-specific colors */
+  --ai-thinking: #3b82f6;
+  --ai-success: #22c55e;
+  --ai-streaming: #a78bfa;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    line-height: 1.6;
+    transition: background-color 0.3s, color 0.3s;
+  }
+
+  /* Typography - Clean hierarchy */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+    line-height: 1.2;
+  }
+
+  h1 { @apply text-3xl; }
+  h2 { @apply text-2xl; }
+  h3 { @apply text-xl; }
+
+  /* Code/AI output styling */
+  code, pre {
+    font-family: var(--font-mono);
+  }
+}
+
+/* ============================================
+   Component Classes - Functional Glass
+   ============================================ */
+
+@layer components {
+  /* Card - Solid with subtle shadow */
+  .card {
+    @apply bg-card text-card-foreground;
+    @apply border border-border rounded-2xl;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .card-elevated {
+    @apply bg-card text-card-foreground;
+    @apply border border-border rounded-2xl;
+    box-shadow: var(--shadow-glass);
+  }
+
+  /* Glass Card - For overlays and navigation */
+  .card-glass {
+    background: var(--surface-glass);
+    @apply text-card-foreground;
+    @apply border border-border rounded-2xl;
+    @apply backdrop-blur-xl;
+    box-shadow: var(--shadow-glass);
+  }
+
+  /* Buttons - Rounded with transitions */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2;
+    @apply px-4 py-2 font-medium rounded-lg;
+    @apply cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+    @apply transition-all duration-200 ease-in-out;
+  }
+
+  .btn-primary {
+    @apply bg-primary text-primary-foreground;
+    @apply inline-flex items-center justify-center gap-2;
+    @apply px-4 py-2 font-medium rounded-lg;
+    @apply cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:ring-offset-2;
+    @apply hover:brightness-110 active:scale-[0.98];
+    @apply transition-all duration-200 ease-in-out;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary text-secondary-foreground;
+    @apply border border-border;
+    @apply inline-flex items-center justify-center gap-2;
+    @apply px-4 py-2 font-medium rounded-lg;
+    @apply cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:ring-offset-2;
+    @apply hover:bg-muted active:scale-[0.98];
+    @apply transition-all duration-200 ease-in-out;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent;
+    @apply inline-flex items-center justify-center gap-2;
+    @apply px-4 py-2 font-medium rounded-lg;
+    @apply cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:ring-offset-2;
+    @apply hover:bg-secondary active:scale-[0.98];
+    @apply transition-all duration-200 ease-in-out;
+  }
+
+  .btn-accent {
+    @apply bg-accent text-accent-foreground;
+    @apply inline-flex items-center justify-center gap-2;
+    @apply px-4 py-2 font-medium rounded-lg;
+    @apply cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:ring-offset-2;
+    @apply hover:brightness-110 active:scale-[0.98];
+    @apply transition-all duration-200 ease-in-out;
+  }
+
+  /* Input - Rounded with glow focus */
+  .input {
+    @apply w-full px-3 py-2;
+    @apply bg-background border border-input rounded-lg;
+    @apply text-foreground placeholder:text-muted-foreground;
+    @apply focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply transition-all duration-200 ease-in-out;
+  }
+
+  .input-lg {
+    @apply w-full px-4 py-3 text-base;
+    @apply bg-background border border-input rounded-lg;
+    @apply text-foreground placeholder:text-muted-foreground;
+    @apply focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply transition-all duration-200 ease-in-out;
+  }
+
+  /* AI-Native Components */
+
+  /* Message bubble - User */
+  .message-user {
+    @apply bg-primary text-primary-foreground;
+    @apply px-4 py-2.5 rounded-2xl rounded-br-md;
+    @apply max-w-[80%] ml-auto;
+  }
+
+  /* Message bubble - AI */
+  .message-ai {
+    @apply bg-secondary text-secondary-foreground;
+    @apply px-4 py-2.5 rounded-2xl rounded-bl-md;
+    @apply border border-border;
+    @apply max-w-[80%];
+  }
+
+  /* Streaming indicator */
+  .streaming-dot {
+    @apply w-2 h-2 bg-ai-streaming rounded-full;
+    animation: pulse-dot 1.4s ease-in-out infinite;
+  }
+
+  /* Thinking indicator */
+  .thinking {
+    @apply flex items-center gap-1.5 text-muted-foreground text-sm;
+  }
+
+  .thinking-dots {
+    @apply flex gap-1;
+  }
+
+  .thinking-dots span {
+    @apply w-1.5 h-1.5 bg-muted-foreground rounded-full;
+    animation: thinking-bounce 1.4s ease-in-out infinite;
+  }
+
+  .thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+  /* Code block */
+  .code-block {
+    @apply bg-secondary p-4 overflow-x-auto rounded-lg;
+    @apply font-mono text-sm;
+    @apply border border-border;
+  }
+
+  /* Status badge */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md;
+  }
+
+  .badge-default {
+    @apply inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md;
+    @apply bg-secondary text-secondary-foreground border border-border;
+  }
+
+  .badge-success {
+    @apply inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md;
+    @apply bg-ai-success text-white;
+  }
+
+  .badge-processing {
+    @apply inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-md;
+    @apply bg-ai-thinking text-white;
+  }
+
+  /* Divider */
+  .divider {
+    @apply h-px bg-border my-4;
+  }
+
+  /* Empty state */
+  .empty-state {
+    @apply flex flex-col items-center justify-center py-12 text-center;
+    @apply text-muted-foreground;
+  }
+
+  /* Data Table */
+  .table-header {
+    @apply bg-secondary/50 text-muted-foreground;
+    @apply uppercase text-xs font-semibold tracking-wider;
+  }
+
+  .table-cell {
+    @apply border-b border-border;
+  }
+
+  .table-row-hover {
+    @apply hover:bg-secondary/50;
+    @apply transition-colors duration-150;
+  }
+
+  /* Skeleton loading */
+  .skeleton {
+    @apply bg-muted animate-pulse rounded;
+  }
+}
+
+/* ============================================
+   Background Blobs - Ambient Animation
+   ============================================ */
+
+.blob {
+  @apply absolute rounded-full mix-blend-multiply blur-3xl;
+  animation: blob 15s infinite;
+}
+
+.dark .blob {
+  @apply mix-blend-normal;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+/* ============================================
+   Animations - Subtle & Purposeful
+   ============================================ */
+
+@layer utilities {
+  /* Respect reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@keyframes blob {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(30px, -30px) scale(1.05);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.95);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes thinking-bounce {
+  0%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.4s ease-out forwards;
+}
+
+/* Cursor blink for streaming text */
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.streaming-cursor::after {
+  content: "\25CB";
+  animation: cursor-blink 1s step-end infinite;
+  color: var(--ai-streaming);
+}

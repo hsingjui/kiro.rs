@@ -6,3 +6,7 @@
 /.idea
 /test.json
 /Cargo.lock
+node_modules/
+.claude/
+openspec/
+kiro.db
